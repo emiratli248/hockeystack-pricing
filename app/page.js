@@ -100,11 +100,14 @@ export default function Calculator() {
     });
 
     const creditsPerRep = rows.reduce((s, r) => s + r.credits, 0);
-    const revenue = perSeatCost * numReps;
+    const overageCreditsPerRep = Math.max(0, creditsPerRep - bundledCredits);
+    const overageCostPerRep = overageCreditsPerRep * customerCostPerCredit;
+    const totalPerSeat = perSeatCost + overageCostPerRep;
+    const revenue = totalPerSeat * numReps;
     const totalCredits = creditsPerRep * numReps;
     const creditUtil = bundledCredits > 0 ? (creditsPerRep / bundledCredits) * 100 : 0;
 
-    return { rows, creditsPerRep, totalCredits, revenue, creditUtil };
+    return { rows, creditsPerRep, overageCreditsPerRep, overageCostPerRep, totalPerSeat, totalCredits, revenue, creditUtil };
   }, [actions, bundledCredits, customerCostPerCredit, numReps, dealsPerRep, targetAccountsPerRep, meetingsPerDay, tasksPerDealPerDay, tasksPerTaPerDay, workingDays]);
 
   const utilColor =
@@ -162,7 +165,15 @@ export default function Calculator() {
 
         {/* Hero output */}
         <div style={{ ...cardStyle, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', marginBottom: 28, overflow: 'hidden' }}>
-          <HeroCell label="Customer pays / mo" value={fmtMoney(calc.revenue)} sub={`${fmtMoney(perSeatCost)} × ${numReps} reps`} />
+          <HeroCell
+            label="Customer pays / mo"
+            value={fmtMoney(calc.revenue)}
+            sub={
+              calc.overageCostPerRep > 0
+                ? `${fmtMoney(perSeatCost)} bundle + ${fmtMoney(calc.overageCostPerRep)} overage × ${numReps} reps`
+                : `${fmtMoney(perSeatCost)} × ${numReps} reps`
+            }
+          />
           <HeroCell label="Credits used / rep / mo" value={fmtNum(calc.creditsPerRep)} sub={`${fmtNum(calc.totalCredits)} total credits`} divider />
           <HeroCell
             label="Credit utilization"
@@ -179,7 +190,21 @@ export default function Calculator() {
             <div style={{ ...eyebrow, marginBottom: 14 }}>Pricing</div>
             <InputRow label="Bundled credits / seat / month" value={bundledCredits} onChange={setBundledCredits} style={inputStyle} />
             <DerivedRow label="$ per credit (to customer)" value={fmtMoney(customerCostPerCredit)} hint="static" />
-            <DerivedRow label="Per-seat cost / month" value={fmtMoney(perSeatCost)} hint={`${fmtNum(bundledCredits)} × ${fmtMoney(customerCostPerCredit)}`} />
+            <DerivedRow label="Bundle cost / seat / month" value={fmtMoney(perSeatCost)} hint={`${fmtNum(bundledCredits)} × ${fmtMoney(customerCostPerCredit)}`} />
+            <DerivedRow
+              label="Overage / seat / month"
+              value={fmtMoney(calc.overageCostPerRep)}
+              hint={
+                calc.overageCreditsPerRep > 0
+                  ? `${fmtNum(calc.overageCreditsPerRep)} × ${fmtMoney(customerCostPerCredit)}`
+                  : 'no overage'
+              }
+            />
+            <DerivedRow
+              label="Total / seat / month"
+              value={fmtMoney(perSeatCost + calc.overageCostPerRep)}
+              hint={`${fmtMoney(perSeatCost)} + ${fmtMoney(calc.overageCostPerRep)}`}
+            />
             <InputRow label="# of reps" value={numReps} onChange={setNumReps} style={inputStyle} last />
           </div>
 
